@@ -11,19 +11,35 @@ from aiogram.types import CallbackQuery, Message
 from dotenv import load_dotenv
 
 from bot.content import (
+    GLOSSARY_TEXT,
     HELP_TEXT,
     INCIDENTS,
+    LIABILITY_TEXT,
+    MYTHS,
     QUIZ,
+    ROLE_GUIDES,
     SEARCH_HINT,
     START_TEXT,
-    TOPICS,
+    TEMPLATE_TEXTS,
+    THEORY_TOPICS,
     format_incident,
+    format_myth,
     format_quiz_question,
     format_quiz_result,
+    format_role_guide,
     format_sources,
-    format_topic,
+    format_template,
+    format_theory_topic,
 )
-from bot.keyboards import incidents_kb, main_menu_kb, quiz_kb, topics_kb
+from bot.keyboards import (
+    incidents_kb,
+    main_menu_kb,
+    myths_kb,
+    quiz_kb,
+    roles_kb,
+    templates_kb,
+    theory_kb,
+)
 from bot.utils import search_materials, split_text
 
 load_dotenv()
@@ -59,37 +75,67 @@ async def cmd_help(message: Message):
 async def cmd_search(message: Message, state: FSMContext):
     parts = (message.text or "").split(maxsplit=1)
     if len(parts) == 2 and parts[1].strip():
-        results = search_materials(parts[1].strip())
-        await send_long_message(message, results)
+        await send_long_message(message, search_materials(parts[1].strip()))
         return
     await state.set_state(SearchState.waiting_query)
     await message.answer(SEARCH_HINT, reply_markup=main_menu_kb())
 
 
-@router.message(F.text == "📚 Разделы")
-async def open_topics(message: Message):
-    await message.answer("Выбери раздел справочника:", reply_markup=topics_kb())
+@router.message(F.text == "📚 Теория")
+async def open_theory(message: Message):
+    await message.answer("Выбери большой теоретический раздел:", reply_markup=theory_kb())
+
+
+@router.message(F.text == "🧠 Глоссарий")
+async def open_glossary(message: Message):
+    await send_long_message(message, GLOSSARY_TEXT)
+
+
+@router.message(F.text == "⚖️ Ответственность")
+async def open_liability(message: Message):
+    await send_long_message(message, LIABILITY_TEXT)
+
+
+@router.message(F.text == "🎯 По ролям")
+async def open_roles(message: Message):
+    await message.answer("Выбери роль — бот покажет приоритеты и риски:", reply_markup=roles_kb())
 
 
 @router.message(F.text == "🧭 Чек-лист")
 async def open_checklist(message: Message):
-    await send_long_message(message, format_topic("checklist"))
+    await send_long_message(message, format_theory_topic("checklist"))
 
 
 @router.message(F.text == "⚠️ Кейсы")
 async def open_cases(message: Message):
-    await send_long_message(message, format_topic("cases"))
-    await message.answer("Выбери ситуацию для быстрого алгоритма действий:", reply_markup=incidents_kb())
+    await send_long_message(message, format_theory_topic("cases"))
+    await message.answer("Нужен быстрый алгоритм? Выбери инцидент:", reply_markup=incidents_kb())
 
 
-@router.message(F.text == "🛟 Что делать?")
+@router.message(F.text == "🛟 Инциденты")
 async def open_incidents(message: Message):
     await message.answer("Выбери рабочую ситуацию — бот покажет порядок действий:", reply_markup=incidents_kb())
+
+
+@router.message(F.text == "🧾 Шаблоны")
+async def open_templates(message: Message):
+    await message.answer("Выбери шаблон или памятку:", reply_markup=templates_kb())
+
+
+@router.message(F.text == "💡 Мифы")
+async def open_myths(message: Message):
+    await message.answer("Выбери миф — бот покажет, где ошибка в рассуждении:", reply_markup=myths_kb())
 
 
 @router.message(F.text == "📁 Источники")
 async def open_sources(message: Message):
     await send_long_message(message, format_sources())
+
+
+@router.message(F.text == "🔎 Поиск")
+async def open_search(message: Message, state: FSMContext):
+    await state.set_state(SearchState.waiting_query)
+    await message.answer(SEARCH_HINT, reply_markup=main_menu_kb())
 
 
 @router.message(F.text == "🧪 Тест")
@@ -100,11 +146,11 @@ async def start_quiz(message: Message):
 @router.callback_query(F.data.startswith("topic:"))
 async def topic_callback(callback: CallbackQuery):
     slug = callback.data.split(":", 1)[1]
-    if slug not in TOPICS:
+    if slug not in THEORY_TOPICS:
         await callback.answer("Раздел не найден", show_alert=True)
         return
     await callback.answer()
-    await send_long_callback(callback, format_topic(slug))
+    await send_long_callback(callback, format_theory_topic(slug))
 
 
 @router.callback_query(F.data.startswith("incident:"))
@@ -115,6 +161,36 @@ async def incident_callback(callback: CallbackQuery):
         return
     await callback.answer()
     await send_long_callback(callback, format_incident(key))
+
+
+@router.callback_query(F.data.startswith("role:"))
+async def role_callback(callback: CallbackQuery):
+    key = callback.data.split(":", 1)[1]
+    if key not in ROLE_GUIDES:
+        await callback.answer("Роль не найдена", show_alert=True)
+        return
+    await callback.answer()
+    await send_long_callback(callback, format_role_guide(key))
+
+
+@router.callback_query(F.data.startswith("myth:"))
+async def myth_callback(callback: CallbackQuery):
+    key = callback.data.split(":", 1)[1]
+    if key not in MYTHS:
+        await callback.answer("Миф не найден", show_alert=True)
+        return
+    await callback.answer()
+    await send_long_callback(callback, format_myth(key))
+
+
+@router.callback_query(F.data.startswith("template:"))
+async def template_callback(callback: CallbackQuery):
+    key = callback.data.split(":", 1)[1]
+    if key not in TEMPLATE_TEXTS:
+        await callback.answer("Шаблон не найден", show_alert=True)
+        return
+    await callback.answer()
+    await send_long_callback(callback, format_template(key))
 
 
 @router.callback_query(F.data.startswith("quiz:"))
@@ -138,7 +214,7 @@ async def quiz_callback(callback: CallbackQuery):
         return
 
     await callback.message.edit_text(format_quiz_result(score, len(QUIZ)))
-    await callback.message.answer("Тест завершён. Можно открыть разделы и повторить теорию.", reply_markup=main_menu_kb())
+    await callback.message.answer("Тест завершён. Открой теорию, роли или мифы для повторения.", reply_markup=main_menu_kb())
 
 
 @router.message(SearchState.waiting_query)
@@ -156,8 +232,7 @@ async def fallback(message: Message):
     text = (message.text or "").strip()
     if not text:
         return
-    results = search_materials(text)
-    await send_long_message(message, results)
+    await send_long_message(message, search_materials(text))
 
 
 async def main():
