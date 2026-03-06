@@ -41,11 +41,8 @@ async def send_long_message(message: Message, text: str):
 
 
 async def send_long_callback(callback: CallbackQuery, text: str):
-    for index, chunk in enumerate(split_text(text)):
-        if index == 0 and callback.message:
-            await callback.message.answer(chunk, reply_markup=main_menu_kb())
-        else:
-            await callback.message.answer(chunk, reply_markup=main_menu_kb())
+    for chunk in split_text(text):
+        await callback.message.answer(chunk, reply_markup=main_menu_kb())
 
 
 @router.message(CommandStart())
@@ -97,7 +94,7 @@ async def open_sources(message: Message):
 
 @router.message(F.text == "🧪 Тест")
 async def start_quiz(message: Message):
-    await message.answer(format_quiz_question(0), reply_markup=quiz_kb(0))
+    await message.answer(format_quiz_question(0), reply_markup=quiz_kb(0, 0))
 
 
 @router.callback_query(F.data.startswith("topic:"))
@@ -134,9 +131,10 @@ async def quiz_callback(callback: CallbackQuery):
     await callback.answer("Ответ принят")
 
     if next_index < len(QUIZ):
-        await callback.message.edit_text(format_quiz_question(next_index), reply_markup=quiz_kb(next_index))
-        if score:
-            await callback.message.answer(f"Текущий результат: {score}/{next_index}", reply_markup=main_menu_kb())
+        await callback.message.edit_text(
+            format_quiz_question(next_index),
+            reply_markup=quiz_kb(next_index, score),
+        )
         return
 
     await callback.message.edit_text(format_quiz_result(score, len(QUIZ)))

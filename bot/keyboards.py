@@ -33,13 +33,13 @@ def incidents_kb():
     return builder.as_markup()
 
 
-def quiz_kb(question_index: int):
+def quiz_kb(question_index: int, score: int):
     builder = InlineKeyboardBuilder()
     for option_index, option in enumerate(QUIZ[question_index]["options"]):
         builder.add(
             InlineKeyboardButton(
                 text=option,
-                callback_data=f"quiz:{question_index}:0:{option_index}",
+                callback_data=f"quiz:{question_index}:{score}:{option_index}",
             )
         )
     builder.adjust(1)
